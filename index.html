@@ -611,6 +611,7 @@ function renderExercises(){
       act.forEach(ex=>{(groups[ex.muscle]=groups[ex.muscle]||[]).push(ex);});
       html+=Object.entries(groups).map(([m,exs])=>`<div class="muscle-heading" style="margin-top:6px">${esc(m)}</div>${exs.map(ex=>exCard(ex,-1,0)).join('')}`).join('');
     }
+    html+=finishHtml();
     body.innerHTML=html;
     return;
   }
@@ -630,7 +631,7 @@ function renderExercises(){
   }else{
     html+='<div class="empty-state">No exercises yet.<br>Add some from the Library tab, then put them on a day here.</div>';
   }
-  if(selDay===TODAY_KEY)html+=finishHtml();
+  html+=finishHtml();
   body.innerHTML=html;
 }
 function muscleChanged(){
