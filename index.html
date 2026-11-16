@@ -59,6 +59,9 @@ h3{font-size:14px;font-weight:500;margin-bottom:8px}
 .ex-head{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:4px}
 .exname{font-weight:500;font-size:15px}
 .ex-meta{font-size:12px;color:#999;margin-left:6px}
+.splitchip{font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;border:1px solid transparent;margin-left:6px;cursor:pointer;font-family:inherit;vertical-align:1px}
+.splitchip.Push{background:#fdeee6;color:#b4481a}.splitchip.Pull{background:#e6f0fb;color:#185fa5}.splitchip.Legs{background:#e8f5e9;color:#2e7d32}.splitchip.None{background:none;color:#aaa;border-color:#ddd;border-style:dashed}
+.splitbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center;font-size:12px;color:#888}
 .exnote{font-size:12px;color:#777;font-style:italic;margin:-1px 0 3px}
 .icon-btn{border:none;background:none;cursor:pointer;color:#aaa;font-size:15px;padding:2px 4px;line-height:1}
 .icon-btn:active{color:#185fa5}
@@ -150,6 +153,7 @@ h3{font-size:14px;font-weight:500;margin-bottom:8px}
   <input type="text" id="lib-search" placeholder="Search…" oninput="renderLibrary()" style="margin-bottom:12px">
   <div class="filter-pills" id="muscle-pills"></div>
   <div class="filter-pills" id="equip-pills"></div>
+  <div class="filter-pills" id="split-pills"></div>
   <div id="lib-content"></div>
 </div>
 
@@ -239,12 +243,16 @@ const ITEMS=[
 ['T. rex','T. rexes',8000],['double-decker bus','double-decker buses',11000],['humpback whale','humpback whales',30000],['Boeing 737','Boeing 737s',41000],['blue whale','blue whales',140000]
 ];
 const MUSCLES=['All',...Object.keys(LIBRARY)];
+const SPLITS=['Push','Pull','Legs','None'];
+const SPLITBYMUSCLE={Chest:'Push',Shoulders:'Push',Triceps:'Push',Back:'Pull',Biceps:'Pull',Legs:'Legs',Glutes:'Legs'};
+const SPLITOVERRIDE={'rear delt fly':'Pull','upright row':'Pull','face pull':'Pull','pull-up':'Pull','chin-up':'Pull','kettlebell halo':'Push'};
+function inferSplit(name,muscle){const o=SPLITOVERRIDE[String(name).toLowerCase()];return o||SPLITBYMUSCLE[muscle]||'None';}
 const MUSCLE_OPTS=Object.keys(LIBRARY);
 const DAYS=['mon','tue','wed','thu','fri','sat','sun'];
 const DAYLABEL=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const TODAY_KEY=DAYS[(new Date().getDay()+6)%7];
 const KEY='gymtracker_v4';
-let activeFilter='All',activeEquip='All';
+let activeFilter='All',activeEquip='All',activeSplit='All',groupBy='muscle';
 let selDay=TODAY_KEY;
 let wtChart=null;
 
@@ -261,6 +269,7 @@ function normalise(s){
     return {id:e.id,name:String(e.name),muscle,
       type:TYPES.includes(e.type)?e.type:inferType(e.name,muscle),
       equip:EQUIPS.includes(e.equip)?e.equip:inferEq(e.name,muscle),
+      split:SPLITS.includes(e.split)?e.split:inferSplit(e.name,muscle),
       note:String(e.note||''),active:e.active!==false,sets:Array.isArray(e.sets)?e.sets:[]};
   });
   b.phases=Array.isArray(s.phases)?s.phases:[];
@@ -391,11 +400,12 @@ function renderLibrary(){
   const search=(document.getElementById('lib-search').value||'').toLowerCase();
   document.getElementById('muscle-pills').innerHTML=MUSCLES.map(m=>`<button class="pill${activeFilter===m?' active':''}" onclick="setFilter('${m}')">${m}</button>`).join('');
   document.getElementById('equip-pills').innerHTML=['All',...EQUIPS].map(m=>`<button class="pill${activeEquip===m?' active':''}" data-eq="${esc(m)}" onclick="setEquip(this.dataset.eq)">${m}</button>`).join('');
+  document.getElementById('split-pills').innerHTML=['All',...SPLITS.slice(0,3)].map(m=>`<button class="pill${activeSplit===m?' active':''}" onclick="setSplit('${m}')">${m==='All'?'Any split':m}</button>`).join('');
   const byName={};state.exercises.forEach(e=>{byName[e.name.toLowerCase()]=e;});
   let html='';
   Object.entries(LIBRARY).forEach(([muscle,exs])=>{
     if(activeFilter!=='All'&&activeFilter!==muscle)return;
-    const filtered=exs.filter(e=>(!search||e.name.toLowerCase().includes(search))&&(activeEquip==='All'||e.eq===activeEquip));
+    const filtered=exs.filter(e=>(!search||e.name.toLowerCase().includes(search))&&(activeEquip==='All'||e.eq===activeEquip)&&(activeSplit==='All'||((byName[e.name.toLowerCase()]||{}).split||inferSplit(e.name,muscle))===activeSplit));
     if(!filtered.length)return;
     html+=`<div style="margin-bottom:14px"><div class="muscle-heading">${muscle}</div><div class="lib-grid">`;
     filtered.forEach(l=>{
@@ -410,13 +420,14 @@ function renderLibrary(){
 }
 function setFilter(m){activeFilter=m;renderLibrary();}
 function setEquip(m){activeEquip=m;renderLibrary();}
+function setSplit(m){activeSplit=m;renderLibrary();}
 function addFromLibrary(btn){
   const name=btn.dataset.name,muscle=btn.dataset.muscle;
   const ex=state.exercises.find(e=>e.name.toLowerCase()===name.toLowerCase());
   if(ex){
     if(ex.active){ex.active=false;DAYS.forEach(k=>{state.days[k].ex=state.days[k].ex.filter(x=>x!==ex.id);});}
     else ex.active=true;
-  }else state.exercises.push({id:newId(),name,muscle,type:btn.dataset.type,equip:btn.dataset.eq,note:'',active:true,sets:[]});
+  }else state.exercises.push({id:newId(),name,muscle,type:btn.dataset.type,equip:btn.dataset.eq,split:inferSplit(name,muscle),note:'',active:true,sets:[]});
   save();renderLibrary();
 }
 
@@ -550,7 +561,8 @@ function exCard(ex,dayIdx,dayLen){
         <button class="icon-btn" onclick="removeFromDay(${ex.id})" aria-label="Remove from day">✕</button>
       </div>`
     :`<div style="display:flex;flex-shrink:0">${tools}<button class="icon-btn" onclick="deleteExercise(${ex.id})" aria-label="Delete exercise">🗑</button></div>`;
-  const meta=dayIdx>=0?'':`<span class="ex-meta">${esc(ex.equip)}</span>`;
+  const chip=`<button class="splitchip ${ex.split}" onclick="cycleSplit(${ex.id})" aria-label="Change split">${ex.split==='None'?'No split':ex.split}</button>`;
+  const meta=(dayIdx>=0?'':`<span class="ex-meta">${esc(ex.equip)}</span>`)+chip;
   const inputs=fieldsFor(ex).map(f=>`<input type="number" inputmode="decimal" id="q${ex.id}-${f.k}" placeholder="${f.ph}" step="${f.step}" min="0" value="${fieldVal(ex,f.k,last)}">`).join('');
   return `<div class="ex-card">
     <div class="ex-head"><div style="min-width:0"><span class="exname">${esc(ex.name)}</span>${meta}</div>${controls}</div>
@@ -562,6 +574,21 @@ function exCard(ex,dayIdx,dayLen){
     </div>
   </div>`;
 }
+function cycleSplit(id){
+  const ex=getEx(id);ex.split=SPLITS[(SPLITS.indexOf(ex.split)+1)%SPLITS.length];
+  save();renderExercises();
+}
+function autoNote(){
+  const d=state.days[selDay];if(d.note.trim())return;
+  const sp=[...new Set(d.ex.map(getEx).filter(e=>e&&e.active).map(e=>e.split))];
+  if(sp.length===1&&sp[0]!=='None')d.note=sp[0];
+}
+function addSplitToDay(sp){
+  const d=state.days[selDay];
+  state.exercises.filter(e=>e.active&&e.split===sp&&!d.ex.includes(e.id)).forEach(e=>d.ex.push(e.id));
+  autoNote();save();renderExercises();
+}
+function setGroupBy(g){groupBy=g;renderExercises();}
 function editNote(id){
   const ex=getEx(id);
   openSheet(`<h3>${esc(ex.name)} — note</h3>
@@ -599,6 +626,9 @@ function renderExercises(){
       </div>
       <div class="row">
         <div><label>Equipment</label><select id="ex-equip">${EQUIPS.map(m=>`<option>${m}</option>`).join('')}</select></div>
+        <div><label>Split</label><select id="ex-split">${SPLITS.map(m=>`<option>${m}</option>`).join('')}</select></div>
+      </div>
+      <div class="row">
         <div><label>Logged as</label><select id="ex-type">${TYPES.map(t=>`<option value="${t}">${TYPELABEL[t]}</option>`).join('')}</select></div>
       </div>
       <button class="btn" onclick="addExercise()">+ Add</button>
@@ -608,7 +638,8 @@ function renderExercises(){
     if(!act.length){html+='<div class="empty-state">No exercises yet.<br>Add one above or pick from the Library tab.</div>';}
     else{
       const groups={};
-      act.forEach(ex=>{(groups[ex.muscle]=groups[ex.muscle]||[]).push(ex);});
+      html+=`<div class="splitbar">Group by <button class="pill${groupBy==='muscle'?' active':''}" onclick="setGroupBy('muscle')">Muscle</button><button class="pill${groupBy==='split'?' active':''}" onclick="setGroupBy('split')">Push / Pull / Legs</button></div>`;
+      act.forEach(ex=>{const g=groupBy==='split'?(ex.split==='None'?'No split':ex.split):ex.muscle;(groups[g]=groups[g]||[]).push(ex);});
       html+=Object.entries(groups).map(([m,exs])=>`<div class="muscle-heading" style="margin-top:6px">${esc(m)}</div>${exs.map(ex=>exCard(ex,-1,0)).join('')}`).join('');
     }
     html+=finishHtml();
@@ -622,6 +653,9 @@ function renderExercises(){
   let html=`<input type="text" id="day-note" placeholder="Add a note (e.g. Legs)" maxlength="40" value="${esc(d.note)}" oninput="setNote(this.value)" style="margin-bottom:12px">`;
   html+=list.map((ex,i)=>exCard(ex,i,list.length)).join('');
   if(activeAll.length){
+    const cnt=sp=>activeAll.filter(e=>e.split===sp&&!d.ex.includes(e.id)).length;
+    const bulk=SPLITS.slice(0,3).filter(sp=>cnt(sp)>0);
+    if(bulk.length)html+=`<div class="splitbar">Add all: ${bulk.map(sp=>`<button class="pill" onclick="addSplitToDay('${sp}')">${sp} (${cnt(sp)})</button>`).join('')}</div>`;
     html+=available.length
       ?`<div class="card" style="display:flex;gap:8px;align-items:center">
           <select id="add-to-day">${available.map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join('')}</select>
@@ -635,6 +669,7 @@ function renderExercises(){
   body.innerHTML=html;
 }
 function muscleChanged(){
+  document.getElementById('ex-split').value=inferSplit('',document.getElementById('ex-muscle').value);
   if(document.getElementById('ex-muscle').value==='Cardio'){
     document.getElementById('ex-type').value='cardio';
     document.getElementById('ex-equip').value='Cardio';
@@ -651,7 +686,7 @@ function addToDay(){
   const id=Number(sel.value);
   const d=state.days[selDay];
   if(!d.ex.includes(id))d.ex.push(id);
-  save();renderExercises();
+  autoNote();save();renderExercises();
 }
 function removeFromDay(id){const d=state.days[selDay];d.ex=d.ex.filter(x=>x!==id);save();renderExercises();}
 function moveInDay(id,dir){
@@ -668,7 +703,7 @@ function addExercise(){
   if(!name)return;
   const ex=state.exercises.find(e=>e.name.toLowerCase()===name.toLowerCase());
   if(ex){if(ex.active)return;ex.active=true;}
-  else state.exercises.push({id:newId(),name,muscle,type,equip,note:'',active:true,sets:[]});
+  else state.exercises.push({id:newId(),name,muscle,type,equip,split:document.getElementById('ex-split').value,note:'',active:true,sets:[]});
   save();renderExercises();
 }
 function logSet(id){
