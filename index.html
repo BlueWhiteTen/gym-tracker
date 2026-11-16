@@ -49,6 +49,8 @@ h3{font-size:14px;font-weight:500;margin-bottom:8px}
 .rec-card{background:#f7f9fc;border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:14px;line-height:1.5}
 .lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;margin-bottom:10px}
 .lib-btn{padding:6px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#333;font-size:12px;cursor:pointer;font-family:inherit;text-align:left}
+.lib-item{position:relative}.lib-item .lib-btn{width:100%;height:100%;box-sizing:border-box}.lib-item.has .lib-btn{padding-right:32px}
+.sk-btn{position:absolute;top:50%;right:5px;transform:translateY(-50%);width:24px;height:24px;border-radius:50%;border:1px solid #cfd8e3;background:#f3f8fd;color:#185fa5;font-size:10px;line-height:1;padding:0;cursor:pointer}
 .lib-btn .eq{font-size:10px;color:#999;margin-top:1px}
 .lib-btn.added{border-color:#4caf85;color:#1d7a44;background:#e6f4ec}
 .muscle-heading{font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;margin-top:2px}
@@ -396,6 +398,150 @@ function renderWeight(){
 }
 function deleteWeight(date){state.weights=state.weights.filter(w=>w.date!==date);save();renderWeight();}
 
+/* ===== SKETCHES (stickman animations) ===== */
+const SK_L={torso:60,ua:33,fa:30,th:46,sh:46,hd:17};
+const skP=(p,l,d)=>{const r=d*Math.PI/180;return [p[0]+l*Math.sin(r),p[1]-l*Math.cos(r)];};
+function skIK(a,b,l1,l2,sg){
+  const dx=b[0]-a[0],dy=b[1]-a[1],full=Math.hypot(dx,dy)||1,d=Math.min(full,l1+l2-0.01);
+  const k=(l1*l1-l2*l2+d*d)/(2*d),h=Math.sqrt(Math.max(l1*l1-k*k,0)),ux=dx/full,uy=dy/full;
+  return [a[0]+k*ux-sg*h*uy,a[1]+k*uy+sg*h*ux];
+}
+const SK_DEF={th:180,sk:180,t:0,ua:165,fa:172,foot:90,anc:'ank',pos:[100,240],bend:1};
+function skPose(o0){
+  const o=Object.assign({},SK_DEF,o0),L=SK_L;
+  if(o.front){
+    const c=[100,0],hip=[100,0],sh=[100,0];
+    const P={sh:[100,92],hip:[100,152]};P.hd=[100,92-L.hd];P.shL=[90,92];P.shR=[110,92];
+    P.kL=skP(P.hip,L.th,180-4);P.aL=skP(P.kL,L.sh,180-2);P.kR=skP(P.hip,L.th,180+4);P.aR=skP(P.kR,L.sh,180+2);
+    P.hipL=[94,152];P.hipR=[106,152];
+    P.elL=skP(P.shL,L.ua,180+o.arm);P.wrL=skP(P.elL,L.fa,180+o.arm+(o.fbend||0));
+    P.elR=skP(P.shR,L.ua,180-o.arm);P.wrR=skP(P.elR,L.fa,180-o.arm-(o.fbend||0));
+    return {pts:P,extras:[],o};
+  }
+  const hip=[0,0],sh=skP(hip,L.torso,o.t),hd=skP(sh,L.hd,o.hd!=null?o.hd:o.t);
+  const knee=skP(hip,L.th,o.th),ank=skP(knee,L.sh,o.sk),toe=skP(ank,16,o.foot);
+  const pts={hip,sh,hd,knee,ank,toe};
+  if(o.th2!=null){pts.knee2=skP(hip,L.th,o.th2);pts.ank2=skP(pts.knee2,L.sh,o.sk2);pts.toe2=skP(pts.ank2,16,o.foot2!=null?o.foot2:90);}
+  if(o.grip){pts.wr=[sh[0]+o.grip[0],sh[1]+o.grip[1]];pts.el=skIK(sh,pts.wr,L.ua,L.fa,o.bend);}
+  else if(o.gnd==null){pts.el=skP(sh,L.ua,o.ua);pts.wr=skP(pts.el,L.fa,o.fa);}
+  const a=pts[o.anc],dx=o.pos[0]-a[0],dy=o.pos[1]-a[1];
+  Object.keys(pts).forEach(k=>{pts[k]=[pts[k][0]+dx,pts[k][1]+dy];});
+  if(o.gnd!=null){pts.wr=[pts.sh[0]+o.gnd,240];pts.el=skIK(pts.sh,pts.wr,L.ua,L.fa,o.bend);}
+  const ex=[],h=pts.hip,s=pts.sh;
+  const perp=skP([0,0],9,o.t-90);
+  if(o.bench==='flat'||o.bench==='inc'){
+    const p0=skP(s,8,o.t);
+    ex.push({pts:[[p0[0]+perp[0],p0[1]+perp[1]],[h[0]+perp[0],h[1]+perp[1]],[h[0]+22,h[1]+9]],w:8,c:'#c9c9c9',stand:true});
+  }else if(o.bench==='upper'){
+    ex.push({pts:[[s[0]-14,s[1]+10],[s[0]+1,s[1]+10],[s[0]+16,s[1]+10]],w:8,c:'#c9c9c9',stand:true});
+  }else if(o.bench==='seat'){
+    ex.push({pts:[[h[0]-16,h[1]+9],[h[0]-4,h[1]+9],[h[0]+10,h[1]+9]],w:8,c:'#c9c9c9',stand:true});
+  }else if(o.bench==='pad'){
+    const q=skP(s,10,o.t);
+    ex.push({pts:[[q[0]+perp[0],q[1]+perp[1]],[(q[0]+h[0])/2+perp[0],(q[1]+h[1])/2+perp[1]],[h[0]+perp[0],h[1]+perp[1]]],w:8,c:'#c9c9c9',stand:false});
+    const c=[pts.ank[0]+skP([0,0],8,o.th)[0],pts.ank[1]+skP([0,0],8,o.th)[1]];
+    ex.push({pts:[skP(c,24,o.th+90),c,skP(c,24,o.th-90)],w:6,c:'#888',stand:false});
+  }
+  if(o.bar)ex.push({pts:[[70,17],[100,17],[130,17]],w:4,c:'#666',stand:false});
+  return {pts,extras:ex,o};
+}
+const SKX={
+ curl:{base:{},A:{ua:160,fa:172},B:{ua:155,fa:40},eq:'db'},
+ squat:{base:{ua:120,fa:300},A:{},B:{th:100,sk:205,t:35},eq:'plate'},
+ bwsquat:{base:{},A:{ua:165,fa:172},B:{th:100,sk:205,t:30,ua:90,fa:90},eq:'none'},
+ goblet:{base:{ua:130,fa:20},A:{},B:{th:100,sk:205,t:20},eq:'db'},
+ deadlift:{base:{pos:[88,240]},A:{th:105,sk:200,t:70,ua:180,fa:180},B:{th:180,sk:180,t:0,ua:172,fa:178},eq:'plate'},
+ rdl:{base:{},A:{ua:172,fa:178},B:{th:165,sk:170,t:80,ua:180,fa:180},eq:'plate'},
+ row:{base:{th:150,sk:190,t:70},A:{ua:180,fa:180},B:{ua:240,fa:180},eq:'plate'},
+ ohp:{base:{},A:{ua:150,fa:0},B:{ua:5,fa:0},eq:'plate'},
+ frontraise:{base:{},A:{ua:172,fa:176},B:{ua:90,fa:90},eq:'db'},
+ lateral:{base:{front:true},A:{arm:12,fbend:0},B:{arm:88,fbend:-12},eq:'db'},
+ bench:{base:{bench:'flat',anc:'ank',pos:[150,240],t:270,th:75,sk:180},A:{ua:2,fa:2},B:{ua:118,fa:0},eq:'plate'},
+ incline:{base:{bench:'inc',anc:'ank',pos:[150,240],t:310,th:75,sk:180},A:{ua:2,fa:2},B:{ua:118,fa:0},eq:'plate'},
+ pushup:{base:{pos:[18,240],gnd:0,bend:1},A:{th:246,sk:246,t:66,gnd:0},B:{th:262,sk:262,t:82,gnd:8},eq:'none'},
+ pullup:{base:{anc:'sh',bar:true,th:178,sk:200,t:0,bend:-1},A:{pos:[100,80],grip:[0,-63]},B:{pos:[100,44],grip:[0,-27]},eq:'none'},
+ pulldown:{base:{bench:'seat',th:90,sk:180,t:350,bend:-1,pos:[110,240]},A:{grip:[14,-60]},B:{grip:[16,8]},eq:'cableTop'},
+ cablerow:{base:{bench:'seat',th:70,sk:110,pos:[170,230],bend:-1},A:{t:25,grip:[62,-6]},B:{t:357,grip:[14,32]},eq:'cableFront'},
+ pushdown:{base:{t:5,sk:182},A:{ua:178,fa:92},B:{ua:178,fa:176},eq:'cableTop'},
+ skull:{base:{bench:'flat',anc:'ank',pos:[150,240],t:270,th:75,sk:180},A:{ua:0,fa:0},B:{ua:5,fa:250},eq:'plate'},
+ ohtri:{base:{},A:{ua:5,fa:0},B:{ua:5,fa:212},eq:'db'},
+ hipthrust:{base:{anc:'sh',pos:[50,196],bench:'upper',sk:180},A:{th:70,sk:190,t:284,ua:106,fa:106},B:{th:88,sk:180,t:270,ua:90,fa:90},eq:'plate'},
+ bridge:{base:{anc:'sh',pos:[60,232]},A:{th:40,sk:170,t:268,ua:95,fa:95},B:{th:88,sk:180,t:232,ua:100,fa:100},eq:'none'},
+ plank:{base:{pos:[18,240],th:258,sk:258,t:78,ua:180,fa:90},A:{},B:{t:80,th:260,sk:260},eq:'none'},
+ crunch:{base:{pos:[168,240],th:50,sk:165,ua:0,fa:215},A:{t:268},B:{t:290,ua:350,fa:205},eq:'none'},
+ situp:{base:{pos:[168,240],th:50,sk:165,ua:0,fa:215},A:{t:268},B:{t:335,ua:10,fa:205},eq:'none'},
+ legraise:{base:{anc:'hip',pos:[96,228],t:270,ua:90,fa:90},A:{th:92,sk:92},B:{th:0,sk:0},eq:'none'},
+ lunge:{base:{pos:[120,240],ua:175,fa:178},A:{th:180,sk:180,th2:180,sk2:180},B:{th:95,sk:180,th2:185,sk2:268},eq:'db'},
+ calf:{base:{},A:{foot:90,pos:[100,240]},B:{foot:135,pos:[100,228.7]},eq:'none'},
+ legpress:{base:{anc:'hip',pos:[92,182],t:305,bench:'pad',ua:120,fa:60},A:{th:65,sk:65},B:{th:20,sk:100},eq:'none'},
+ kbswing:{base:{},A:{th:160,sk:170,t:68,ua:165,fa:178},B:{th:180,sk:180,t:0,ua:90,fa:90},eq:'kb'}
+};
+const SKMAP={
+ 'bench press':['bench','plate'],'incline bench press':['incline','plate'],'dumbbell bench press':['bench','db'],'incline dumbbell press':['incline','db'],
+ 'push-up':['pushup'],'close-grip push-up':['pushup'],'deadlift':['deadlift'],'pull-up':['pullup'],'chin-up':['pullup'],
+ 'lat pulldown':['pulldown'],'seated cable row':['cablerow'],'bent-over barbell row':['row','plate'],'dumbbell row':['row','db'],
+ 'overhead press':['ohp','plate'],'dumbbell shoulder press':['ohp','db'],'lateral raise':['lateral'],'front raise':['frontraise'],
+ 'barbell curl':['curl','plate'],'ez-bar curl':['curl','plate'],'dumbbell curl':['curl','db'],'hammer curl':['curl','db'],
+ 'tricep pushdown':['pushdown'],'skull crusher':['skull'],'overhead tricep extension':['ohtri'],
+ 'squat':['squat'],'front squat':['squat'],'goblet squat':['goblet'],'bodyweight squat':['bwsquat'],
+ 'lunge':['lunge'],'walking lunge':['lunge'],'dumbbell romanian deadlift':['rdl','db'],'romanian deadlift':['rdl'],
+ 'leg press':['legpress'],'calf raise':['calf'],'hip thrust':['hipthrust'],'glute bridge':['bridge'],
+ 'plank':['plank'],'crunch':['crunch'],'sit-up':['situp'],'leg raise':['legraise'],'kettlebell swing':['kbswing']
+};
+function skFor(name){const m=SKMAP[String(name).toLowerCase()];return m?{key:m[0],eq:m[1]||SKX[m[0]].eq}:null;}
+const skCache={};
+function skPoses(key){
+  if(!skCache[key]){const x=SKX[key];skCache[key]=[skPose(Object.assign({},x.base,x.A)),skPose(Object.assign({},x.base,x.B))];}
+  return skCache[key];
+}
+const skMix=(a,b,f)=>[a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f];
+function skSvg(key,eq,f){
+  const [A,B]=skPoses(key),P={};
+  Object.keys(A.pts).forEach(k=>{P[k]=skMix(A.pts[k],B.pts[k],f);});
+  const ln=(a,b,c,w)=>a&&b?`<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/>`:'';
+  let s='<line x1="8" y1="242" x2="192" y2="242" stroke="#ccc" stroke-width="3" stroke-linecap="round"/>';
+  A.extras.forEach((e,i)=>{
+    const pp=e.pts.map((p,j)=>skMix(p,B.extras[i].pts[j],f));
+    if(e.stand){[pp[0],pp[pp.length-1]].forEach(p=>{s+=ln(p,[p[0],242],'#ddd',4);});}
+    for(let j=0;j<pp.length-1;j++)s+=ln(pp[j],pp[j+1],e.c,e.w);
+  });
+  const D='#222',BL='#185fa5';
+  if(A.o.front){
+    s+=ln(P.sh,P.hip,D,5)+ln(P.shL,P.shR,D,5)+ln(P.hipL,P.hip,D,5)+ln(P.hip,P.hipR,D,5)+ln(P.hip,P.kL,D,5)+ln(P.kL,P.aL,D,5)+ln(P.hip,P.kR,D,5)+ln(P.kR,P.aR,D,5);
+    s+=ln(P.shL,P.elL,BL,5)+ln(P.elL,P.wrL,BL,5)+ln(P.shR,P.elR,BL,5)+ln(P.elR,P.wrR,BL,5);
+    if(eq==='db')s+=`<circle cx="${P.wrL[0]}" cy="${P.wrL[1]}" r="7" fill="${BL}"/><circle cx="${P.wrR[0]}" cy="${P.wrR[1]}" r="7" fill="${BL}"/>`;
+    s+=`<circle cx="${P.hd[0]}" cy="${P.hd[1]}" r="11" fill="#fff" stroke="${D}" stroke-width="4"/>`;
+    return `<svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">${s}</svg>`;
+  }
+  if(P.knee2)s+=ln(P.hip,P.knee2,'#777',5)+ln(P.knee2,P.ank2,'#777',5)+ln(P.ank2,P.toe2,'#777',5);
+  s+=ln(P.hip,P.knee,D,5)+ln(P.knee,P.ank,D,5)+ln(P.ank,P.toe,D,5)+ln(P.hip,P.sh,D,5);
+  s+=ln(P.sh,P.el,BL,5)+ln(P.el,P.wr,BL,5);
+  const w=P.wr;
+  if(eq==='plate')s+=`<circle cx="${w[0]}" cy="${w[1]}" r="13" fill="${BL}" fill-opacity=".8"/><circle cx="${w[0]}" cy="${w[1]}" r="3" fill="#fff"/>`;
+  else if(eq==='db')s+=`<circle cx="${w[0]}" cy="${w[1]}" r="7" fill="${BL}"/>`;
+  else if(eq==='kb')s+=`<circle cx="${w[0]}" cy="${w[1]+9}" r="10" fill="${BL}"/>`;
+  else if(eq==='cableTop')s+=ln(w,[w[0]+6,4],'#999',2)+`<circle cx="${w[0]}" cy="${w[1]}" r="4" fill="${BL}"/>`;
+  else if(eq==='cableFront')s+=ln(w,[196,w[1]],'#999',2)+`<circle cx="${w[0]}" cy="${w[1]}" r="4" fill="${BL}"/>`;
+  s+=`<circle cx="${P.hd[0].toFixed(1)}" cy="${P.hd[1].toFixed(1)}" r="11" fill="#fff" stroke="${D}" stroke-width="4"/>`;
+  return `<svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">${s}</svg>`;
+}
+let skTok=0;
+function openSketch(name){
+  const f=skFor(name);if(!f)return;
+  const tok=++skTok;
+  openSheet(`<h3>${esc(name)}</h3><div id="sk-box" style="background:#fafafa;border-radius:10px;max-width:300px;margin:0 auto"></div>
+    <p style="font-size:12px;color:#999;text-align:center;margin-top:8px">Start ⇄ end position. A rough guide, not a technique lesson.</p>
+    <div class="sheet-actions"><button class="btn" onclick="closeSheet()">Close</button></div>`);
+  const box=document.getElementById('sk-box'),t0=performance.now(),T=1600,H=450;
+  (function loop(now){
+    if(tok!==skTok||!document.getElementById('sk-box'))return;
+    const cyc=2*(T+H),t=(now-t0)%cyc;let u;
+    if(t<H)u=0;else if(t<H+T)u=(t-H)/T;else if(t<2*H+T)u=1;else u=1-(t-2*H-T)/T;
+    box.innerHTML=skSvg(f.key,f.eq,0.5-0.5*Math.cos(Math.PI*u));
+    requestAnimationFrame(loop);
+  })(t0);
+}
+
 function renderLibrary(){
   const search=(document.getElementById('lib-search').value||'').toLowerCase();
   document.getElementById('muscle-pills').innerHTML=MUSCLES.map(m=>`<button class="pill${activeFilter===m?' active':''}" onclick="setFilter('${m}')">${m}</button>`).join('');
@@ -412,7 +558,8 @@ function renderLibrary(){
       const ex=byName[l.name.toLowerCase()];
       const added=!!(ex&&ex.active);
       const kept=!!(ex&&!ex.active&&ex.sets.length);
-      html+=`<button class="lib-btn${added?' added':''}" data-name="${esc(l.name)}" data-muscle="${muscle}" data-eq="${esc(l.eq)}" data-type="${l.type}" onclick="addFromLibrary(this)">${added?'✓ ':''}${esc(l.name)}<div class="eq">${l.eq}${kept?' · history kept':''}</div></button>`;
+      const sk=skFor(l.name);
+      html+=`<div class="lib-item${sk?' has':''}"><button class="lib-btn${added?' added':''}" data-name="${esc(l.name)}" data-muscle="${muscle}" data-eq="${esc(l.eq)}" data-type="${l.type}" onclick="addFromLibrary(this)">${added?'✓ ':''}${esc(l.name)}<div class="eq">${l.eq}${kept?' · history kept':''}</div></button>${sk?`<button class="sk-btn" data-n="${esc(l.name)}" onclick="openSketch(this.dataset.n)" aria-label="Show how to do it">▶</button>`:''}</div>`;
     });
     html+='</div></div>';
   });
@@ -553,7 +700,7 @@ function toggleHist(id,btn){
 
 function exCard(ex,dayIdx,dayLen){
   const last=lastSet(ex);
-  const tools=`<button class="icon-btn" onclick="openChart(${ex.id})" aria-label="Progress chart">📈</button><button class="icon-btn" onclick="editNote(${ex.id})" aria-label="Exercise note">📝</button>`;
+  const tools=(skFor(ex.name)?`<button class="icon-btn" data-n="${esc(ex.name)}" onclick="openSketch(this.dataset.n)" aria-label="Show how to do it">🎞️</button>`:'')+`<button class="icon-btn" onclick="openChart(${ex.id})" aria-label="Progress chart">📈</button><button class="icon-btn" onclick="editNote(${ex.id})" aria-label="Exercise note">📝</button>`;
   const controls=dayIdx>=0
     ?`<div style="display:flex;flex-shrink:0">${tools}
         <button class="icon-btn" ${dayIdx===0?'disabled style="opacity:.25"':''} onclick="moveInDay(${ex.id},-1)" aria-label="Move up">↑</button>
