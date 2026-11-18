@@ -121,6 +121,9 @@ html[data-theme=dark]{--bg1:#1c1f24;--bd:#2e333a;--mut:#9aa1a9;--tx:#e4e6e8;colo
 .vbar{height:9px;border-radius:5px;background:#185fa5;margin-top:2px}.vbar.old{background:#9bbfe6}.vnum{color:var(--tx);font-size:11px;display:block;line-height:1.3}.vnum.old{color:var(--mut)}
 .sessbox{display:flex;align-items:center;gap:8px;background:#e8f5e9;color:#1d6b3a;border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:14px}.sessbox b{font-size:18px;font-variant-numeric:tabular-nums}
 .skbox{background:#fafafa;border-radius:10px;max-width:300px;margin:0 auto}
+:root{--sk-leg:#3a4a66;--sk-torso:#185fa5;--sk-skin:#e3b98f;--sk-eq:#d9822b;--sk-gnd:#ccc;--sk-gnd2:#ddd;--sk-bar:#888;--sk-far:#8d98ad;--sk-wood:#8a6a3a;--sk-bg:#fafafa}
+html[data-theme=dark]{--sk-leg:#9db0d3;--sk-torso:#4a90d9;--sk-skin:#e8c4a0;--sk-eq:#f0a050;--sk-gnd:#4a5058;--sk-gnd2:#3a4048;--sk-bar:#9aa3ad;--sk-far:#66758f;--sk-wood:#b08d57;--sk-bg:#242930}
+.skcue{margin:10px auto 0;padding:0 0 0 18px;max-width:280px;font-size:13px;line-height:1.7;color:var(--tx,#1a1a1a)}
 html[data-theme=dark] body{background:#121417;color:var(--tx)}
 html[data-theme=dark] .tabs,html[data-theme=dark] .card,html[data-theme=dark] .timer-block,html[data-theme=dark] .ex-card,html[data-theme=dark] .sheetbody,html[data-theme=dark] .daybtn,html[data-theme=dark] .lib-btn{background:var(--bg1);border-color:var(--bd);color:var(--tx)}
 html[data-theme=dark] .tab{color:var(--mut)}html[data-theme=dark] .tab.active{color:#6fb1f0;border-bottom-color:#6fb1f0}
@@ -135,7 +138,7 @@ html[data-theme=dark] .sdate{background:#1f3550;color:#8ec1f5}html[data-theme=da
 html[data-theme=dark] .lib-btn.added{background:#17352a;border-color:#2f7a55;color:#6fd3a0}
 html[data-theme=dark] .progress-bar{background:#2e333a}
 html[data-theme=dark] .sk-btn{background:#242930;border-color:#3a4048;color:#6fb1f0}
-html[data-theme=dark] .skbox{background:#242930}html[data-theme=dark] .skbox svg{filter:invert(1) hue-rotate(180deg)}
+html[data-theme=dark] .skbox{background:#242930}
 html[data-theme=dark] .sessbox{background:#17352a;color:#6fd3a0}
 html[data-theme=dark] .cal-d.sel{outline-color:#e4e6e8}
 html[data-theme=dark] [style*="color:#666"],html[data-theme=dark] [style*="color:#555"]{color:#aab1b8!important}
@@ -686,39 +689,43 @@ function skFrame(key,f){
 }
 function skSvg(key,eq,f){
   const {P,ex,o}=skFrame(key,f);
-  const ln=(a,b,c,w)=>a&&b?`<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/>`:'';
-  let s='<line x1="8" y1="242" x2="192" y2="242" stroke="#ccc" stroke-width="3" stroke-linecap="round"/>';
+  const cm={'#ccc':'var(--sk-gnd)','#ddd':'var(--sk-gnd2)','#c9c9c9':'var(--sk-gnd)','#bbb':'var(--sk-gnd)','#aaa':'var(--sk-bar)','#999':'var(--sk-bar)','#888':'var(--sk-bar)','#777':'var(--sk-bar)','#666':'var(--sk-bar)','#555':'var(--sk-bar)','#185fa5':'var(--sk-eq)','#5aa0e0':'var(--sk-eq)','#8a6a3a':'var(--sk-wood)','#222':'var(--sk-leg)'};
+  const ln=(a,b,c,w)=>(c=cm[c]||c,a&&b?`<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/>`:'');
+  let s='<line x1="8" y1="242" x2="192" y2="242" stroke="var(--sk-gnd)" stroke-width="3" stroke-linecap="round"/>';
   ex.forEach(e=>{
     const pp=e.pts;
-    if(e.circ){s+=`<circle cx="${pp[0][0].toFixed(1)}" cy="${pp[0][1].toFixed(1)}" r="${pp[0][2]}" fill="none" stroke="${e.c}" stroke-width="${e.w}"/>`;return;}
+    if(e.circ){s+=`<circle cx="${pp[0][0].toFixed(1)}" cy="${pp[0][1].toFixed(1)}" r="${pp[0][2]}" fill="none" stroke="${cm[e.c]||e.c}" stroke-width="${e.w}"/>`;return;}
     if(e.stand){[pp[0],pp[pp.length-1]].forEach(p=>{s+=ln(p,[p[0],242],'#ddd',4);});}
     for(let j=0;j<pp.length-1;j++)s+=ln(pp[j],pp[j+1],e.c,e.w);
   });
-  const D='#222',BL='#185fa5',G='#777';
+  const LEG='var(--sk-leg)',TOR='var(--sk-torso)',SK='var(--sk-skin)',BL='var(--sk-eq)',FAR='var(--sk-far)';
   const eqDraw=w=>{
     if(!w)return '';
-    if(eq==='plate')return `<circle cx="${w[0]}" cy="${w[1]}" r="13" fill="${BL}" fill-opacity=".8"/><circle cx="${w[0]}" cy="${w[1]}" r="3" fill="#fff"/>`;
+    if(eq==='plate')return `<circle cx="${w[0]}" cy="${w[1]}" r="13" fill="${BL}" fill-opacity=".8"/><circle cx="${w[0]}" cy="${w[1]}" r="3" fill="var(--sk-bg)"/>`;
     if(eq==='db')return `<circle cx="${w[0]}" cy="${w[1]}" r="7" fill="${BL}"/>`;
     if(eq==='kb')return `<circle cx="${w[0]}" cy="${w[1]+9}" r="10" fill="${BL}"/>`;
     if(eq==='grip')return `<circle cx="${w[0]}" cy="${w[1]}" r="5" fill="${BL}"/>`;
     if(eq==='wheel')return `<circle cx="${w[0]}" cy="${w[1]+6}" r="10" fill="none" stroke="${BL}" stroke-width="5"/>`;
-    if(eq==='cableTop')return ln(w,[w[0]+6,4],'#999',2)+`<circle cx="${w[0]}" cy="${w[1]}" r="4" fill="${BL}"/>`;
-    if(eq==='cableFront')return ln(w,[196,w[1]],'#999',2)+`<circle cx="${w[0]}" cy="${w[1]}" r="4" fill="${BL}"/>`;
-    if(eq==='cableLow')return ln(w,[w[0]+14,238],'#999',2)+`<circle cx="${w[0]}" cy="${w[1]}" r="4" fill="${BL}"/>`;
+    if(eq==='cableTop')return ln(w,[w[0]+6,4],'var(--sk-bar)',2)+`<circle cx="${w[0]}" cy="${w[1]}" r="4" fill="${BL}"/>`;
+    if(eq==='cableFront')return ln(w,[196,w[1]],'var(--sk-bar)',2)+`<circle cx="${w[0]}" cy="${w[1]}" r="4" fill="${BL}"/>`;
+    if(eq==='cableLow')return ln(w,[w[0]+14,238],'var(--sk-bar)',2)+`<circle cx="${w[0]}" cy="${w[1]}" r="4" fill="${BL}"/>`;
     return '';
   };
+  const head=()=>`<circle cx="${P.hd[0].toFixed(1)}" cy="${P.hd[1].toFixed(1)}" r="12" fill="${SK}"/>`;
   if(o.front){
-    s+=ln(P.sh,P.hip,D,5)+ln(P.shL,P.shR,D,5)+ln(P.hipL,P.hip,D,5)+ln(P.hip,P.hipR,D,5)+ln(P.hip,P.kL,D,5)+ln(P.kL,P.aL,D,5)+ln(P.hip,P.kR,D,5)+ln(P.kR,P.aR,D,5);
-    s+=ln(P.shL,P.elL,BL,5)+ln(P.elL,P.wrL,BL,5)+ln(P.shR,P.elR,BL,5)+ln(P.elR,P.wrR,BL,5);
+    s+=ln(P.hip,P.kL,LEG,13)+ln(P.kL,P.aL,LEG,11)+ln(P.hip,P.kR,LEG,13)+ln(P.kR,P.aR,LEG,11);
+    s+=ln(P.hipL,P.hipR,LEG,15)+ln(P.sh,P.hip,TOR,18)+ln(P.shL,P.shR,TOR,17);
+    s+=ln(P.shL,P.elL,TOR,10)+ln(P.elL,P.wrL,SK,8)+ln(P.shR,P.elR,TOR,10)+ln(P.elR,P.wrR,SK,8);
     if(eq==='kb1')s+=`<circle cx="${P.wrR[0]}" cy="${P.wrR[1]-8}" r="10" fill="${BL}"/>`;
     else{s+=eqDraw(P.wrL);if(eq!=='kb'||Math.abs(P.wrL[0]-P.wrR[0])>3)s+=eqDraw(P.wrR);}
-    s+=`<circle cx="${P.hd[0].toFixed(1)}" cy="${P.hd[1].toFixed(1)}" r="11" fill="#fff" stroke="${D}" stroke-width="4"/>`;
+    s+=head();
     return `<svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">${s}</svg>`;
   }
-  if(P.knee2)s+=ln(P.hip,P.knee2,G,5)+ln(P.knee2,P.ank2,G,5)+ln(P.ank2,P.toe2,G,5);
-  s+=ln(P.hip,P.knee,D,5)+ln(P.knee,P.ank,D,5)+ln(P.ank,P.toe,D,5)+ln(P.hip,P.sh,D,5);
-  s+=ln(P.sh,P.el,BL,5)+ln(P.el,P.wr,BL,5)+eqDraw(P.wr);
-  s+=`<circle cx="${P.hd[0].toFixed(1)}" cy="${P.hd[1].toFixed(1)}" r="11" fill="#fff" stroke="${D}" stroke-width="4"/>`;
+  if(P.knee2)s+=ln(P.hip,P.knee2,FAR,12)+ln(P.knee2,P.ank2,FAR,10)+ln(P.ank2,P.toe2,FAR,7);
+  s+=ln(P.hip,P.knee,LEG,13)+ln(P.knee,P.ank,LEG,11)+ln(P.ank,P.toe,LEG,8);
+  s+=ln(P.hip,P.sh,TOR,18);
+  s+=ln(P.sh,P.el,TOR,10)+ln(P.el,P.wr,SK,8)+eqDraw(P.wr);
+  s+=head();
   return `<svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">${s}</svg>`;
 }
 let skTok=0;
@@ -726,7 +733,8 @@ function openSketch(name){
   const f=skFor(name);if(!f)return;
   const tok=++skTok;
   openSheet(`<h3>${esc(name)}</h3><div id="sk-box" class="skbox"></div>
-    <p style="font-size:12px;color:#999;text-align:center;margin-top:8px">Start ⇄ end position. A rough guide, not a technique lesson.</p>
+    ${skCue(name)}
+    <p style="font-size:11px;color:var(--mut);text-align:center;margin-top:8px">Start ⇄ end position. A rough guide, not a technique lesson.</p>
     <div class="sheet-actions"><button class="btn" onclick="closeSheet()">Close</button></div>`);
   const box=document.getElementById('sk-box'),t0=performance.now(),T=1600,H=450;
   (function loop(now){
@@ -737,6 +745,100 @@ function openSketch(name){
     requestAnimationFrame(loop);
   })(t0);
 }
+
+const SKCUE={
+bench:'Shoulder blades pinched back|Bar to mid-chest, elbows about 45°|Feet planted, drive up',
+incline:'Bench at about 30°|Bar to upper chest|Wrists stacked over elbows',
+dbench:'Secure your legs first|Lower to the lower chest|Control the way down',
+chestpress:'Seat so handles sit at chest height|Press without locking out hard|Keep shoulders back',
+pushup:'Hands under shoulders|Body in one straight line|Elbows about 45°, chest to floor',
+decpushup:'Feet on a bench, body straight|Elbows about 45°|Chest toward the floor',
+pike:'Hips high, head between arms|Lower the top of your head forward|Press back up',
+fly:'Slight bend in the elbows|Open wide until a chest stretch|Squeeze arms together',
+chestdip:'Lean forward|Lower until shoulders are about elbow height|Press up without shrugging',
+deadlift:'Bar over mid-foot|Flat back, chest up|Push the floor away, hips and shoulders rise together',
+rackpull:'Bar just below the knee|Flat back|Squeeze glutes at the top',
+rdl:'Soft knees, hips push back|Bar or weights close to legs|Stop at a hamstring stretch',
+goodm:'Bar on upper back|Hinge at the hips|Keep a flat back',
+hyperext:'Hinge at the hips|Rise to a straight line, no arching|Squeeze glutes',
+pullup:'Start from a full hang|Pull chest toward the bar|Lower under control',
+pulldown:'Lean back slightly|Pull the bar to upper chest|Elbows down, not back',
+sapull:'Arms almost straight|Sweep the bar down to thighs|Keep ribs down',
+cablerow:'Sit tall|Pull handle to the stomach|Squeeze shoulder blades, no swinging',
+row:'Hinge forward, flat back|Pull toward the hip|Squeeze at the top',
+invrow:'Body in a straight line|Pull chest to the bar|Elbows close to the body',
+facepull:'Rope at face height|Pull toward your face, elbows high|Squeeze rear shoulders',
+ohp:'Ribs down, glutes tight|Press straight overhead|Head through at the top',
+machpress:'Seat so handles are at shoulder height|Press without locking out hard|Keep back against pad',
+lateral:'Slight bend in elbows|Raise to shoulder height|Lead with the elbows, no swinging',
+frontraise:'Raise to shoulder height|Keep core tight|No leaning back',
+reardelt:'Hinge forward, flat back|Open arms wide, elbows slightly bent|Squeeze rear shoulders',
+upright:'Bar close to the body|Elbows lead, up to chest height|Keep it light on the shoulders',
+shrug:'Lift shoulders straight up|Pause at the top|No rolling',
+halo:'Keep ribs down|Circle close to the head|Move slowly, both directions',
+curl:'Elbows pinned at your sides|Curl up, squeeze|Lower slowly',
+incdbcurl:'Lie back on an incline bench|Arms hang behind the body|Curl without swinging',
+conccurl:'Elbow rests on inner thigh|Curl up and squeeze|Lower fully',
+cablecurl:'Elbows by your sides|Curl up and squeeze|Control the way down',
+preacher:'Armpits on the pad|Lower until nearly straight|Do not swing',
+pushdown:'Elbows pinned to your sides|Push down to full extension|Control the way up',
+skull:'Upper arms stay still|Lower to forehead or just behind|Extend without flaring elbows',
+ohtri:'Elbows point forward|Lower behind the head|Extend fully overhead',
+tricepdip:'Slight lean forward|Lower to about 90° at the elbow|Press up without shrugging',
+benchdip:'Hands on the bench behind you|Lower until elbows are about 90°|Keep back close to the bench',
+kickback:'Hinge forward, upper arm parallel to the floor|Straighten the arm back|Squeeze the triceps',
+squat:'Feet about shoulder width|Knees track over toes|Chest up, depth to parallel or lower',
+goblet:'Hold weight at chest|Elbows inside the knees|Sit between your hips',
+bwsquat:'Feet shoulder width|Knees track over toes|Chest up, drive through the heels',
+sqdb:'Weights at your sides or chest|Knees track over toes|Chest up',
+hacksq:'Back against the pad|Feet shoulder width|Control down, drive up through the heels',
+legpress:'Lower back stays on the seat|Knees track over toes|Do not lock out hard',
+lunge:'Long step, upright torso|Back knee toward the floor|Push through the front heel',
+barbelunge:'Bar on the upper back|Long step, upright torso|Push through the front heel',
+bulgarian:'Rear foot on the bench|Drop straight down|Front knee tracks over toes',
+stepup:'Whole foot on the step|Drive through the lead heel|Do not push off the back foot',
+pistol:'Hold on if needed|Extend the free leg forward|Knee tracks over toes',
+wallsit:'Back flat on the wall|Thighs parallel to the floor|Knees over ankles',
+legext:'Adjust pad above the ankles|Extend and squeeze|Lower slowly',
+legcurl:'Pad just above the heels|Curl and squeeze|Lower slowly',
+calf:'Rise onto the balls of the feet|Pause at the top|Lower to a full stretch',
+seatedcalf:'Pad on the lower thighs|Rise high, pause|Lower to a full stretch',
+hipthrust:'Upper back on the bench|Drive through the heels|Squeeze glutes, ribs down',
+bridge:'Feet flat, close to the hips|Lift until knees, hips and shoulders align|Squeeze glutes',
+cablekick:'Strap on the ankle|Kick back, squeeze the glute|Do not arch the lower back',
+donkey:'Hands under shoulders, knees under hips|Lift the leg, heel to the ceiling|Keep hips level',
+abduct:'Sit back against the pad|Push knees apart|Return slowly',
+adduct:'Sit back against the pad|Squeeze knees together|Return slowly',
+plank:'Elbows under shoulders|Body in one straight line|Squeeze glutes and abs',
+hollow:'Lower back pressed into the floor|Arms and legs low and straight|Breathe, hold',
+lsit:'Hands pressing down, shoulders low|Legs straight, parallel to the floor|Hold',
+crunch:'Lower back stays down|Lift shoulder blades only|Squeeze abs at the top',
+situp:'Feet anchored or bent|Curl up with control|Lower slowly',
+cablecrunch:'Hips stay still|Curl ribs toward the pelvis|Squeeze abs',
+legraise:'Lower back pressed to the floor|Legs straight|Lower slowly, no arching',
+hangleg:'Hang tall, shoulders engaged|Raise legs without swinging|Lower under control',
+russian:'Lean back, chest up|Rotate from the torso|Keep feet steady',
+abwheel:'Start on your knees|Roll out, hips and back stay straight|Pull back with the abs',
+bicycle:'Hands by the ears|Opposite elbow to knee|Slow and controlled',
+dragon:'Shoulders anchored on the bench|Body straight, lower as one piece|Control the descent',
+mountain:'Hands under shoulders|Drive knees toward the chest|Hips low, steady pace',
+deadbug:'Lower back pressed into the floor|Opposite arm and leg lower together|Move slowly',
+landmine:'Stand tall, core tight|Press up and slightly forward|Control the way down',
+kbswing:'Hinge, do not squat|Snap the hips forward|Arms guide, glutes drive',
+kbclean:'Hip drive, not arm pull|Keep the bell close to the body|Land softly at the shoulder',
+dtp:'Drive with the hips|Bring it overhead in one flow|Lock out, stand tall',
+windmill:'Eyes on the overhead bell|Hinge at the hip toward the floor|Keep the arm straight',
+tgu:'Eyes on the weight|Move one step at a time|Keep the arm vertical',
+boxjump:'Swing arms and jump|Land softly, knees bent|Stand tall on top, step down',
+treadmill:'Stand tall, relaxed shoulders|Land under your hips|Keep a steady pace',
+rowing:'Legs, then back, then arms|Return arms, then back, then legs|Keep a flat back',
+run:'Stand tall, relaxed shoulders|Land under your hips|Steady breathing',
+walk:'Stand tall|Swing arms naturally|Heel to toe',
+cycling:'Saddle at hip height|Keep a slight bend at the knee|Relaxed shoulders',
+jumprope:'Small jumps on the balls of the feet|Turn from the wrists|Stay relaxed',
+swim:'Long body, head in line|Rotate the shoulders|Steady kick'
+};
+function skCue(name){const m=SKMAP[String(name).toLowerCase()];if(!m)return '';const c=SKCUE[m[0]];return c?'<ul class="skcue">'+c.split('|').map(x=>'<li>'+x+'</li>').join('')+'</ul>':'';}
 
 function renderLibrary(){
   const search=(document.getElementById('lib-search').value||'').toLowerCase();
