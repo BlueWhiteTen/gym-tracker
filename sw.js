@@ -1,5 +1,5 @@
-const CACHE='gym-tracker-v7';
-const ASSETS=['./','index.html','chart.umd.js','manifest.webmanifest','icon-192.png','icon-512.png','maskable-512.png','apple-touch-icon.png'];
+const CACHE='gym-tracker-v8';
+const ASSETS=['./','index.html','firebase-config.js','chart.umd.js','manifest.webmanifest','icon-192.png','icon-512.png','maskable-512.png','apple-touch-icon.png'];
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting()));
 });
